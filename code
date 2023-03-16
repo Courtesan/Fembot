@@ -1,6 +1,7 @@
 import os
 import discord
 import openai
+import re
 
 from discord.ext import commands
 
@@ -17,20 +18,32 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Define function to generate response from GPT-4
 def generate_response(prompt):
-    response = openai.Completion.create(
-        engine=model_engine,
-        prompt=prompt,
-        max_tokens=150,
-        n=1,
-        stop=None,
-        temperature=0.7,
-    )
-    message = response.choices[0].text.strip()
-    return message
+    try:
+        response = openai.Completion.create(
+            engine=model_engine,
+            prompt=prompt,
+            max_tokens=150,
+            n=1,
+            stop=None,
+            temperature=0.7,
+        )
+        message = response.choices[0].text.strip()
+        return message
+    except openai.error.RateLimitedError:
+        return "Sorry, I have exceeded my API rate limit. Please try again later."
 
 # Define function to check if input contains the keyword "Fembot"
 def contains_fembot(input):
     return "fembot" in input.lower()
+
+# Define function to check if input is a question
+def is_question(input):
+    pattern = r'^.*\?[\s]*$'
+    if bool(re.match(pattern, input)):
+        return True
+    else:
+        return input.endswith('?')
+
 
 # Define event handler for when the bot is ready
 @bot.event
@@ -52,7 +65,7 @@ async def on_message(message):
         await message.channel.send("What can I assist you with, Master?")
 
     # Check if input is a question
-    if "?" in message.content:
+    if is_question(message.content):
         # Generate response from GPT-4
         prompt = f"{message.content} Fembot says:"
         response = generate_response(prompt)
