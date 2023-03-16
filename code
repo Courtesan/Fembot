@@ -1,0 +1,54 @@
+import os
+import discord
+import openai
+
+from discord.ext import commands
+
+# Set up Discord client
+#intents = discord.Intents.default()
+#client = discord.Client(intents=intents)
+#intents.message_content = True
+
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+# Authenticate using Discord and OpenAI API keys from environment variables
+#TOKEN = os.environ['DISCORD_TOKEN']
+#openai.api_key = os.environ['OPENAI_API_KEY']
+
+# Set the OpenAI model to use
+model_engine = "text-davinci-002" # update this to use the latest OpenAI model
+
+# Define the command to trigger the bot
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    if "Fembot" in message.content:
+        # Ask for input
+        await message.channel.send("How may I assist you, Master?")
+
+        # Wait for input from the user
+        def check(msg):
+            return msg.author == message.author and msg.channel == message.channel
+
+        user_input = await bot.wait_for('message', check=check)
+        
+        # Generate a response using OpenAI API
+        prompt = f"Fembot: {user_input.content}\nMaster:"
+        response = openai.Completion.create(
+            engine=model_engine,
+            prompt=prompt,
+            max_tokens=1024,
+            n=1,
+            stop=None,
+            temperature=0.7,
+        )
+        output = response.choices[0].text.strip()
+
+        # Output the response with "Master" included
+        await message.channel.send(f"{output} Master")
+
+# Run the bot
+bot.run(os.getenv('DISCORD_TOKEN'))
