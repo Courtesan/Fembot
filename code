@@ -2,7 +2,8 @@ import os
 import discord
 import openai
 import re
-
+import requests
+from bs4 import BeautifulSoup
 from discord.ext import commands
 
 # Authenticate using Discord and OpenAI API keys from environment variables
@@ -44,6 +45,20 @@ def is_question(input):
     else:
         return input.endswith('?')
 
+# Define function to scrape menu items from a coffee shop's website
+def scrape_menu(shop_url):
+    # Make a GET request to the shop's website
+    response = requests.get(shop_url)
+
+    # Parse the HTML content using BeautifulSoup
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    # Find all menu items listed on the website
+    menu_items = []
+    for item in soup.find_all('div', class_='menu-item-name'):
+        menu_items.append(item.text.strip())
+
+    return menu_items
 
 # Define event handler for when the bot is ready
 @bot.event
@@ -53,25 +68,31 @@ async def on_ready():
 # Define event handler for when a message is received
 @bot.event
 async def on_message(message):
-    # Ignore messages from the bot itself
-    if message.author == bot.user:
-        return
-    if message.author.bot:
+    # Ignore messages from the bot itself and other bots
+    if message.author == bot.user or message.author.bot:
         return
 
-    # Check if input contains the keyword "Fembot"
-    if contains_fembot(message.content):
-        # Send greeting message
-        await message.channel.send("What can I assist you with, Master?")
+    # Check if input contains the command "Fembot Coffee"
+    if "fembot coffee" in message.content.lower():
+        # Scrape menu items from a coffee shop's website and generate a recommendation
+        shop_url = "https://www.starbucks.com/menu/drinks"
+        menu_items = scrape_menu(shop_url)
+        recommendation = "I recommend trying the " + menu_items[0]
 
-    # Check if input is a question
-    if is_question(message.content):
-        # Generate response from GPT-4
-        prompt = f"{message.content} Fembot says:"
-        response = generate_response(prompt)
+        # Send recommendation back to the channel
+        await message.channel.send(recommendation)
+    else:
+        # Check if input contains the keyword "Fembot"
+        if contains_fembot(message.content):
+            # Send greeting message
+            await message.channel.send("What can I assist you with, Master?")
+        else:
+            # Generate response from GPT-4
+            prompt = f"{message.content} Fembot says:"
+            response = generate_response(prompt)
 
-        # Send response back to the channel
-        await message.channel.send(response)
+            # Send response back to the channel
+            await message.channel.send(response)
 
 # Run the Discord bot
 bot.run(TOKEN)
